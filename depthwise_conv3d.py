@@ -3,11 +3,13 @@ import math
 import DWCONV_CUDA
 import torch
 from torch import nn
+from torch.cuda.amp import custom_bwd, custom_fwd
 from torch.nn.modules.utils import _triple
 
 
 class DepthwiseConv3dFunction(torch.autograd.Function):
     @staticmethod
+    @custom_fwd
     def forward(ctx, input, weight, bias=None, stride=1, padding=0, dilation=1,
                 groups=1):
         ctx.stride = _triple(stride)
@@ -22,7 +24,8 @@ class DepthwiseConv3dFunction(torch.autograd.Function):
             raise NotImplementedError
         if weight.requires_grad or input.requires_grad:
             ctx.save_for_backward(input, weight, bias)
-
+        weight = weight.to(input.dtype)
+        bias = bias.to(input.dtype)
         output = DWCONV_CUDA.conv_depthwise3d_cuda(
             input, weight, ctx.kernel_size, bias,
             ctx.stride,
@@ -32,6 +35,7 @@ class DepthwiseConv3dFunction(torch.autograd.Function):
         return output
 
     @staticmethod
+    @custom_bwd
     def backward(ctx, grad_output):
         grad_output = grad_output.contiguous()
         if not grad_output.is_cuda:
@@ -88,7 +92,6 @@ class DepthwiseConv3d(nn.Module):
         self.weight.data.uniform_(-stdv, stdv)
         if self.with_bias:
             self.bias.data.fill_(0)
-
     def forward(self, x):
         return depthwise_conv3d(x, self.weight, self.bias, self.stride, self.padding, self.dilation,
                                 self.groups, )

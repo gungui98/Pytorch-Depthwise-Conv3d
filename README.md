@@ -22,8 +22,8 @@ import torch
 from depthwise_conv3d import DepthwiseConv3d
 
 dtype = torch.float
-conv = DepthwiseConv3d(2, 2 * depth_multiplier, kernel_size=3, groups=2).to("cuda", dtype)
+conv = DepthwiseConv3d(2, 2, kernel_size=3, groups=2).to("cuda", dtype)
 input = torch.randn(2, 2, 6, 6, 6, device="cuda", dtype=dtype).div_(2).requires_grad_()
-output = conv(i)
+output = conv(input)
 
 ```
